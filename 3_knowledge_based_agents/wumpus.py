@@ -67,32 +67,27 @@ class KnowledgeBase:
     def _resolution_ask(self, literal):
         #create negation
         negation = f"-{literal}" if literal[0] != "-" else literal[1:]
-        
-        # if frozenset({negation}) in self.cnf_clauses:
-        #     print(f"KB |= not {literal}")
-        #     return False
-        # if frozenset({literal}) in self.cnf_clauses:
-        #     print(f"KB |= {literal}")
-        #     return True
 
         clauses = self.cnf_clauses.copy()
         query_clause = frozenset({negation})
         clauses.append(query_clause)
-
-        #seen = set(map(frozenset, clauses))
-        new_clauses = []
+       
         while True:
+            new_clauses = []
             for i in range(len(clauses)):
+                # print()
+                # print(f"Resolvement {i}")
                 for j in range(i + 1, len(clauses)):
                     resolvents = self._resolve(clauses[i], clauses[j])
                     for resolvent in resolvents:
                         
                         if resolvent == frozenset():
-                            print("RESOLVENTS THAT LEAD TO RESULT")
-                            print(resolvents)
+                            # print("RESOLVENTS THAT LEAD TO RESULT")
+                            # print(resolvents)
                             print(f"KB |= {literal}")
                             return True
                     new_clauses = new_clauses + resolvents
+                    
             if all(clause in clauses for clause in new_clauses):
                 print(f"KB |= not {literal}")
                 return False
@@ -118,15 +113,16 @@ class KnowledgeBase:
     def _resolve(self, clause1, clause2):
         resolvents = []
         for literal1 in clause1:
-            negation = f"-{literal1}" if literal1[0] != "-" else literal1[1:]
-            for literal2 in clause2:
-                
+            negation1 = f"-{literal1}" if literal1[0] != "-" else literal1[1:]
             
-            #if negation in clause2:
-            new_clause = frozenset(
-                l for l in clause1 | clause2 if l != literal and l != negation
-            )
-            resolvents.append(new_clause)
+            #if there is a conflict
+            for literal2 in clause2:
+                if negation1 == literal2:
+                    #if negation in clause2:
+                    new_clause = frozenset(
+                        l for l in clause1 | clause2 if l != literal1 and l != negation1
+                    )
+                    resolvents.append(new_clause)
         print(clause1)
         print(clause2)    
         print(resolvents)
@@ -168,25 +164,23 @@ def update_resolution_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y
         if 1 <= nx <= 4 and 1 <= ny <= 4:
             adjacent.append((nx, ny))
 
-    # Breeze rules (adjacent to pits)
-    if perceptions["breeze"]:
-        for nx, ny in adjacent:
-            kb.tell({f"B{x}{y}", f"-P{nx}{ny}"})
-
-        positive_clause = {f"-B{x}{y}"}
-        for nx, ny in adjacent:
-            positive_clause.add(f"P{nx}{ny}")
-        kb.tell(positive_clause)
-
-    # Stench rules (adjacent to wumpus)
     if perceptions["stench"]:
-        for nx, ny in adjacent:
-            kb.tell({f"S{x}{y}", f"-W{nx}{ny}"})
-
-        positive_clause = {f"-S{x}{y}"}
-        for nx, ny in adjacent:
-            positive_clause.add(f"W{nx}{ny}")
-        kb.tell(positive_clause)
+        for i, (nx, ny) in enumerate(adjacent):
+            premises = {f"-S{x}{y}"}
+            for j, (ox, oy) in enumerate(adjacent):
+                if (ox, oy) != (nx, ny):
+                    premises.add(f"W{ox}{oy}")
+            premises.add(f"W{nx}{ny}")
+            kb.tell(premises)
+         
+    if perceptions["breeze"]:
+        for i, (nx, ny) in enumerate(adjacent):
+            premises = {f"-B{x}{y}"}
+            for j, (ox, oy) in enumerate(adjacent):
+                if (ox, oy) != (nx, ny):
+                    premises.add(f"P{ox}{oy}")
+            premises.add(f"P{nx}{ny}")
+            kb.tell(premises)  
         
 def update_forward_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y: int = 1):
     
@@ -226,7 +220,6 @@ def update_forward_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y: i
                     premises.add(f"-W{ox}{oy}")
             premises.add(f"=>W{nx}{ny}")
             kb.tell(premises)
-
 
 def move(wumpus_env: gym, kb: KnowledgeBase, pos: map, direction: int, action: str):
     
@@ -320,7 +313,6 @@ while user_input != "q":
         case _:
             print("Invalid input.")
        
-    
 
 
 
