@@ -1,0 +1,16 @@
+# Virtuelle Umgebung
+KI-Praktika-env/
+
+# Python-Cache
+__pycache__/
+*.pyc
+
+# Jupyter Checkpoints
+.ipynb_checkpoints/
+
+# OS-spezifisches
+.DS_Store
+
+# MNIST-Dataset
+notebooks/P4/mnist_test_full.csv
+notebooks/P4/mnist_train_full.csv
