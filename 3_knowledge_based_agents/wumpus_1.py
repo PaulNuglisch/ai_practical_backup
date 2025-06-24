@@ -22,7 +22,7 @@ class KnowledgeBase:
     def tell(self, sentence):
         if self.method == "resolution":      
             clause = frozenset(sentence)
-            if not clause == self.cnf_clauses:
+            if not clause in self.cnf_clauses:
                 contradictions = [existing for existing in self.cnf_clauses if self._contradicts_existing(clause, existing)]
                 if contradictions:
                     print(f"WARNING CONTRADICTION: {clause} contradicts with {contradictions}")
@@ -68,32 +68,32 @@ class KnowledgeBase:
         #create negation
         negation = f"-{literal}" if literal[0] != "-" else literal[1:]
         
-        if frozenset({negation}) in self.cnf_clauses:
-            print(f"KB |= not {literal}")
-            return False
-        if frozenset({literal}) in self.cnf_clauses:
-            print(f"KB |= {literal}")
-            return True
+        # if frozenset({negation}) in self.cnf_clauses:
+        #     print(f"KB |= not {literal}")
+        #     return False
+        # if frozenset({literal}) in self.cnf_clauses:
+        #     print(f"KB |= {literal}")
+        #     return True
 
         clauses = self.cnf_clauses.copy()
         query_clause = frozenset({negation})
         clauses.append(query_clause)
 
-        seen = set(map(frozenset, clauses))
-
+        #seen = set(map(frozenset, clauses))
+        new_clauses = []
         while True:
-            new_clauses = []
             for i in range(len(clauses)):
                 for j in range(i + 1, len(clauses)):
-                    if literal in clauses[i] or negation in clauses[i] or literal in clauses[j] or negation in clauses[j]:
-                        resolvent = self._resolve(clauses[i], clauses[j])
+                    resolvents = self._resolve(clauses[i], clauses[j])
+                    for resolvent in resolvents:
+                        
                         if resolvent == frozenset():
+                            print("RESOLVENTS THAT LEAD TO RESULT")
+                            print(resolvents)
                             print(f"KB |= {literal}")
                             return True
-                        if resolvent and frozenset(resolvent) not in seen:
-                            new_clauses.append(resolvent)
-                            seen.add(frozenset(resolvent))
-            if not new_clauses:
+                    new_clauses = new_clauses + resolvents
+            if all(clause in clauses for clause in new_clauses):
                 print(f"KB |= not {literal}")
                 return False
             clauses.extend(new_clauses)
@@ -116,12 +116,21 @@ class KnowledgeBase:
             print(f"KB |= not {literal}")
                        
     def _resolve(self, clause1, clause2):
-        for literal in clause1:
-            negation = f"-{literal}" if literal[0] != "-" else literal[1:]
-            if negation in clause2:
-                new_clause = frozenset(l for l in clause1 | clause2 if l != literal and l != negation)
-                return new_clause
-        return False
+        resolvents = []
+        for literal1 in clause1:
+            negation = f"-{literal1}" if literal1[0] != "-" else literal1[1:]
+            for literal2 in clause2:
+                
+            
+            #if negation in clause2:
+            new_clause = frozenset(
+                l for l in clause1 | clause2 if l != literal and l != negation
+            )
+            resolvents.append(new_clause)
+        print(clause1)
+        print(clause2)    
+        print(resolvents)
+        return resolvents
 
     def print_kb(self):
         
@@ -144,7 +153,7 @@ def update_resolution_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y
     
     #Start field is safe (no pit, no wumpus)
     
-    print(perceptions)
+    #print(perceptions)
     
     kb.tell({f"S{x}{y}"} if perceptions["stench"]  else {f"-S{x}{y}"})
     kb.tell({f"B{x}{y}"} if perceptions["breeze"] else {f"-B{x}{y}"})
@@ -162,21 +171,21 @@ def update_resolution_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y
     # Breeze rules (adjacent to pits)
     if perceptions["breeze"]:
         for nx, ny in adjacent:
-            kb.tell({f"-B{x}{y}", f"P{nx}{ny}"})
+            kb.tell({f"B{x}{y}", f"-P{nx}{ny}"})
 
-        positive_clause = {f"B{x}{y}"}
+        positive_clause = {f"-B{x}{y}"}
         for nx, ny in adjacent:
-            positive_clause.add(f"-P{nx}{ny}")
+            positive_clause.add(f"P{nx}{ny}")
         kb.tell(positive_clause)
 
     # Stench rules (adjacent to wumpus)
     if perceptions["stench"]:
         for nx, ny in adjacent:
-            kb.tell({f"-S{x}{y}", f"W{nx}{ny}"})
+            kb.tell({f"S{x}{y}", f"-W{nx}{ny}"})
 
-        positive_clause = {f"S{x}{y}"}
+        positive_clause = {f"-S{x}{y}"}
         for nx, ny in adjacent:
-            positive_clause.add(f"-W{nx}{ny}")
+            positive_clause.add(f"W{nx}{ny}")
         kb.tell(positive_clause)
         
 def update_forward_kb(kb: KnowledgeBase, perceptions: list = [],x: int = 1, y: int = 1):
